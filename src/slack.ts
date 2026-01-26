@@ -358,7 +358,7 @@ export function registerHandlers(app: App): void {
             elements: [
               {
                 type: 'mrkdwn',
-                text: `Your balance: ${market.getUserBalance(body.user.id, body.user.name || body.user.id)} coins`
+                text: `Your balance: ${market.getUserBalance(body.user.id, (body.user as any).name || body.user.id)} coins`
               }
             ]
           }
