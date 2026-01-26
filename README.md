@@ -27,52 +27,39 @@ A Slack bot that allows anyone to create prediction markets with fake money. Use
 ### 1. Create a Slack App
 
 1. Go to [Slack API Apps](https://api.slack.com/apps)
-2. Click "Create New App" → "From scratch"
-3. Name your app (e.g., "Prediction Market") and select your workspace
+2. Click "Create New App"
+3. Choose **"From a manifest"** (recommended) or "From scratch"
 
-### 2. Configure App Permissions
+#### Option A: From a Manifest (Recommended)
 
-1. Go to **OAuth & Permissions**
-2. Add these **Bot Token Scopes**:
-   - `chat:write` - Send messages
-   - `commands` - Add slash commands
-   - `users:read` - Read user info
+1. Select your workspace
+2. Choose **JSON** tab
+3. Paste the contents of `slack-manifest.json` from this repo
+4. Click "Create"
+5. Skip to step 2 below
 
-### 3. Enable Socket Mode
+#### Option B: From Scratch
 
-1. Go to **Socket Mode**
-2. Enable Socket Mode
-3. Create an App-Level Token with `connections:write` scope
-4. Save the token (starts with `xapp-`)
+1. Name your app (e.g., "Prediction Market") and select your workspace
+2. Go to **OAuth & Permissions** and add Bot Token Scopes:
+   - `chat:write`, `commands`, `users:read`
+3. Go to **Slash Commands** → Create `/predict` command
+4. Go to **Interactivity & Shortcuts** → Enable interactivity
+5. Continue to step 2 below
 
-### 4. Create Slash Command
+### 2. Enable Socket Mode & Get Tokens
 
-1. Go to **Slash Commands**
-2. Click "Create New Command"
-3. Set Command to `/predict`
-4. Set Description to "Prediction market commands"
-5. Enable "Escape channels, users, and links"
-6. Save
+1. Go to **Socket Mode** → Enable it
+2. Click "Generate" to create an App-Level Token with `connections:write` scope
+3. Copy the token (starts with `xapp-`)
 
-### 5. Enable Interactivity
+### 3. Install App & Get Remaining Tokens
 
-1. Go to **Interactivity & Shortcuts**
-2. Toggle on Interactivity
-3. Save changes
+1. Go to **Install App** → Click "Install to Workspace" → Authorize
+2. Copy the **Bot User OAuth Token** (starts with `xoxb-`)
+3. Go to **Basic Information** → Copy the **Signing Secret**
 
-### 6. Install App to Workspace
-
-1. Go to **Install App**
-2. Click "Install to Workspace"
-3. Authorize the app
-4. Copy the **Bot User OAuth Token** (starts with `xoxb-`)
-
-### 7. Get Signing Secret
-
-1. Go to **Basic Information**
-2. Copy the **Signing Secret**
-
-### 8. Configure Environment
+### 4. Configure Environment
 
 Create a `.env` file based on `.env.example`:
 
@@ -88,7 +75,7 @@ SLACK_SIGNING_SECRET=your-signing-secret
 SLACK_APP_TOKEN=xapp-your-app-token
 ```
 
-### 9. Install Dependencies and Run
+### 5. Install Dependencies and Run
 
 ```bash
 # Install dependencies
