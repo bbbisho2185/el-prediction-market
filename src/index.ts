@@ -12,25 +12,25 @@ for (const envVar of requiredEnvVars) {
   }
 }
 
-// Initialize database
-console.log('Initializing database...');
-initializeDatabase();
-console.log('Database initialized.');
-
-// Create Slack app
-const app = new App({
-  token: process.env.SLACK_BOT_TOKEN,
-  signingSecret: process.env.SLACK_SIGNING_SECRET,
-  socketMode: true,
-  appToken: process.env.SLACK_APP_TOKEN,
-  logLevel: process.env.LOG_LEVEL === 'debug' ? LogLevel.DEBUG : LogLevel.INFO
-});
-
-// Register all handlers
-registerHandlers(app);
-
 // Start the app
 (async () => {
+  // Initialize database
+  console.log('Initializing database...');
+  await initializeDatabase();
+  console.log('Database initialized.');
+
+  // Create Slack app
+  const app = new App({
+    token: process.env.SLACK_BOT_TOKEN,
+    signingSecret: process.env.SLACK_SIGNING_SECRET,
+    socketMode: true,
+    appToken: process.env.SLACK_APP_TOKEN,
+    logLevel: process.env.LOG_LEVEL === 'debug' ? LogLevel.DEBUG : LogLevel.INFO
+  });
+
+  // Register all handlers
+  registerHandlers(app);
+
   const port = parseInt(process.env.PORT || '3000', 10);
   await app.start(port);
   console.log(`⚡️ Prediction Market Bot is running on port ${port}!`);
