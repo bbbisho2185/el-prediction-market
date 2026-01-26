@@ -1,0 +1,31 @@
+{
+  "name": "slack-prediction-market-bot",
+  "version": "1.0.0",
+  "description": "A Slack bot for creating and participating in prediction markets with fake money",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "dev": "ts-node src/index.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "keywords": [
+    "slack",
+    "bot",
+    "prediction-market",
+    "betting"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "@slack/bolt": "^3.17.0",
+    "better-sqlite3": "^9.4.3",
+    "dotenv": "^16.4.1"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "^7.6.8",
+    "@types/node": "^20.11.16",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.3.3"
+  }
+}
