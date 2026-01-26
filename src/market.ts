@@ -58,9 +58,14 @@ export function createMarket(
 
   try {
     const market = db.createMarket(creatorId, question.trim(), options.map(o => o.trim()), channelId);
+    if (!market) {
+      return { success: false, error: 'Failed to create market in database' };
+    }
     return { success: true, market };
   } catch (error) {
-    return { success: false, error: 'Failed to create market' };
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    console.error('Error creating market:', errorMessage);
+    return { success: false, error: `Failed to create market: ${errorMessage}` };
   }
 }
 

@@ -161,13 +161,24 @@ export interface MarketWithDetails extends Market {
 }
 
 export function createMarket(creatorId: string, question: string, options: string[], channelId: string): Market {
+  console.log('Creating market:', { creatorId, question, options: options.length, channelId });
+
   runSql(
     'INSERT INTO markets (creator_id, question, options, channel_id) VALUES (?, ?, ?, ?)',
     [creatorId, question, JSON.stringify(options), channelId]
   );
 
   const lastId = getLastInsertRowId();
-  return queryOne<Market>('SELECT * FROM markets WHERE id = ?', [lastId])!;
+  console.log('Last insert ID:', lastId);
+
+  const market = queryOne<Market>('SELECT * FROM markets WHERE id = ?', [lastId]);
+  console.log('Created market:', market);
+
+  if (!market) {
+    throw new Error(`Failed to retrieve created market with ID ${lastId}`);
+  }
+
+  return market;
 }
 
 export function getMarket(marketId: number): Market | undefined {
