@@ -70,7 +70,7 @@ export function registerHandlers(app: App): void {
             type: 'button',
             text: { type: 'plain_text', text: 'View & Bet', emoji: true },
             action_id: 'view_market',
-            value: String(m.id)
+            value: JSON.stringify({ market_id: m.id, channel_id: command.channel_id })
           }
         } as any);
       }
@@ -159,7 +159,7 @@ export function registerHandlers(app: App): void {
 
       await respond({
         response_type: 'ephemeral',
-        blocks: getMarketDetailBlocks(details, command.user_id)
+        blocks: getMarketDetailBlocks(details, command.user_id, command.channel_id)
       });
       return;
     }
@@ -267,12 +267,25 @@ export function registerHandlers(app: App): void {
   app.action('view_market', async ({ ack, body, client, action }) => {
     await ack();
 
-    const marketId = parseInt((action as any).value, 10);
+    let marketId: number;
+    let channelId: string;
+
+    // Parse the value - could be JSON or just a number
+    const actionValue = (action as any).value;
+    try {
+      const parsed = JSON.parse(actionValue);
+      marketId = parsed.market_id;
+      channelId = parsed.channel_id;
+    } catch {
+      marketId = parseInt(actionValue, 10);
+      channelId = (body as any).channel?.id || (body as any).container?.channel_id;
+    }
+
     const details = market.getMarketDetails(marketId);
 
     if (!details) {
       await client.chat.postEphemeral({
-        channel: (body as any).channel?.id || (body as any).container?.channel_id,
+        channel: channelId,
         user: body.user.id,
         text: 'Market not found.'
       });
@@ -280,9 +293,9 @@ export function registerHandlers(app: App): void {
     }
 
     await client.chat.postEphemeral({
-      channel: (body as any).channel?.id || (body as any).container?.channel_id,
+      channel: channelId,
       user: body.user.id,
-      blocks: getMarketDetailBlocks(details, body.user.id)
+      blocks: getMarketDetailBlocks(details, body.user.id, channelId)
     });
   });
 
@@ -290,7 +303,20 @@ export function registerHandlers(app: App): void {
   app.action('open_bet_modal', async ({ ack, body, client, action }) => {
     await ack();
 
-    const marketId = parseInt((action as any).value, 10);
+    let marketId: number;
+    let channelId: string;
+
+    // Parse the value - could be JSON or just a number
+    const actionValue = (action as any).value;
+    try {
+      const parsed = JSON.parse(actionValue);
+      marketId = parsed.market_id;
+      channelId = parsed.channel_id;
+    } catch {
+      marketId = parseInt(actionValue, 10);
+      channelId = (body as any).channel?.id || (body as any).container?.channel_id;
+    }
+
     const details = market.getMarketDetails(marketId);
 
     if (!details) {
@@ -299,7 +325,7 @@ export function registerHandlers(app: App): void {
 
     if (details.status !== 'open') {
       await client.chat.postEphemeral({
-        channel: (body as any).channel?.id || (body as any).container?.channel_id,
+        channel: channelId,
         user: body.user.id,
         text: 'This market is no longer open for betting.'
       });
@@ -318,7 +344,7 @@ export function registerHandlers(app: App): void {
         callback_id: 'place_bet_modal',
         private_metadata: JSON.stringify({
           market_id: marketId,
-          channel_id: (body as any).channel?.id || (body as any).container?.channel_id
+          channel_id: channelId
         }),
         title: { type: 'plain_text', text: 'Place Your Bet' },
         submit: { type: 'plain_text', text: 'Place Bet' },
@@ -435,7 +461,20 @@ export function registerHandlers(app: App): void {
   app.action('open_resolve_modal', async ({ ack, body, client, action }) => {
     await ack();
 
-    const marketId = parseInt((action as any).value, 10);
+    let marketId: number;
+    let channelId: string;
+
+    // Parse the value - could be JSON or just a number
+    const actionValue = (action as any).value;
+    try {
+      const parsed = JSON.parse(actionValue);
+      marketId = parsed.market_id;
+      channelId = parsed.channel_id;
+    } catch {
+      marketId = parseInt(actionValue, 10);
+      channelId = (body as any).channel?.id || (body as any).container?.channel_id;
+    }
+
     const details = market.getMarketDetails(marketId);
 
     if (!details) {
@@ -444,7 +483,7 @@ export function registerHandlers(app: App): void {
 
     if (details.creator_id !== body.user.id) {
       await client.chat.postEphemeral({
-        channel: (body as any).channel?.id || (body as any).container?.channel_id,
+        channel: channelId,
         user: body.user.id,
         text: 'Only the market creator can resolve this market.'
       });
@@ -463,7 +502,7 @@ export function registerHandlers(app: App): void {
         callback_id: 'resolve_market_modal',
         private_metadata: JSON.stringify({
           market_id: marketId,
-          channel_id: (body as any).channel?.id || (body as any).container?.channel_id
+          channel_id: channelId
         }),
         title: { type: 'plain_text', text: 'Resolve Market' },
         submit: { type: 'plain_text', text: 'Resolve' },
@@ -564,8 +603,19 @@ export function registerHandlers(app: App): void {
   app.action('cancel_market', async ({ ack, body, client, action }) => {
     await ack();
 
-    const marketId = parseInt((action as any).value, 10);
-    const channelId = (body as any).channel?.id || (body as any).container?.channel_id;
+    let marketId: number;
+    let channelId: string;
+
+    // Parse the value - could be JSON or just a number
+    const actionValue = (action as any).value;
+    try {
+      const parsed = JSON.parse(actionValue);
+      marketId = parsed.market_id;
+      channelId = parsed.channel_id;
+    } catch {
+      marketId = parseInt(actionValue, 10);
+      channelId = (body as any).channel?.id || (body as any).container?.channel_id;
+    }
 
     const result = market.cancelMarket(marketId, body.user.id);
 
@@ -635,7 +685,7 @@ function getHelpBlocks(): any[] {
   ];
 }
 
-function getMarketDetailBlocks(details: db.MarketWithDetails, userId: string): any[] {
+function getMarketDetailBlocks(details: db.MarketWithDetails, userId: string, channelId?: string): any[] {
   const odds = market.formatMarketOdds(details);
   const percentages = market.formatMarketPercentages(details);
 
@@ -670,13 +720,17 @@ function getMarketDetailBlocks(details: db.MarketWithDetails, userId: string): a
   ];
 
   if (details.status === 'open') {
+    const buttonValue = channelId
+      ? JSON.stringify({ market_id: details.id, channel_id: channelId })
+      : String(details.id);
+
     const actions: any[] = [
       {
         type: 'button',
         text: { type: 'plain_text', text: '💰 Place Bet', emoji: true },
         style: 'primary',
         action_id: 'open_bet_modal',
-        value: String(details.id)
+        value: buttonValue
       }
     ];
 
@@ -685,14 +739,14 @@ function getMarketDetailBlocks(details: db.MarketWithDetails, userId: string): a
         type: 'button',
         text: { type: 'plain_text', text: '✅ Resolve', emoji: true },
         action_id: 'open_resolve_modal',
-        value: String(details.id)
+        value: buttonValue
       });
       actions.push({
         type: 'button',
         text: { type: 'plain_text', text: '🚫 Cancel', emoji: true },
         style: 'danger',
         action_id: 'cancel_market',
-        value: String(details.id)
+        value: buttonValue
       });
     }
 
