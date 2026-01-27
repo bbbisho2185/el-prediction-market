@@ -100,8 +100,8 @@ function runSql(sql: string, params: any[] = []): void {
   saveDatabase();
 }
 
-function getLastInsertRowId(): number {
-  const result = db.exec('SELECT last_insert_rowid() as id');
+function getLastInsertRowId(table: string): number {
+  const result = db.exec(`SELECT MAX(id) as id FROM ${table}`);
   if (result.length > 0 && result[0].values.length > 0) {
     return result[0].values[0][0] as number;
   }
@@ -171,7 +171,7 @@ export function createMarket(creatorId: string, question: string, options: strin
     [creatorId, question, JSON.stringify(options), channelId]
   );
 
-  const lastId = getLastInsertRowId();
+  const lastId = getLastInsertRowId('markets');
   console.log('Last insert ID:', lastId);
 
   const market = queryOne<Market>('SELECT * FROM markets WHERE id = ?', [lastId]);
@@ -274,7 +274,7 @@ export function placeBet(marketId: number, userId: string, optionIndex: number, 
     [marketId, userId, optionIndex, amount]
   );
 
-  const lastId = getLastInsertRowId();
+  const lastId = getLastInsertRowId('bets');
 
   const user = queryOne<{ balance: number }>('SELECT balance FROM users WHERE id = ?', [userId]);
   if (user) {
