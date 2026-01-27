@@ -270,12 +270,17 @@ export function registerHandlers(app: App): void {
     let marketId: number;
     let channelId: string;
 
-    // Parse the value - could be JSON or just a number
+    // Parse the value - could be JSON object or just a number
     const actionValue = (action as any).value;
     try {
       const parsed = JSON.parse(actionValue);
-      marketId = parsed.market_id;
-      channelId = parsed.channel_id;
+      if (typeof parsed === 'object' && parsed !== null) {
+        marketId = parsed.market_id;
+        channelId = parsed.channel_id;
+      } else {
+        marketId = parsed;
+        channelId = (body as any).channel?.id || (body as any).container?.channel_id;
+      }
     } catch {
       marketId = parseInt(actionValue, 10);
       channelId = (body as any).channel?.id || (body as any).container?.channel_id;
@@ -306,12 +311,17 @@ export function registerHandlers(app: App): void {
     let marketId: number;
     let channelId: string;
 
-    // Parse the value - could be JSON or just a number
+    // Parse the value - could be JSON object or just a number
     const actionValue = (action as any).value;
     try {
       const parsed = JSON.parse(actionValue);
-      marketId = parsed.market_id;
-      channelId = parsed.channel_id;
+      if (typeof parsed === 'object' && parsed !== null) {
+        marketId = parsed.market_id;
+        channelId = parsed.channel_id;
+      } else {
+        marketId = parsed;
+        channelId = (body as any).channel?.id || (body as any).container?.channel_id;
+      }
     } catch {
       marketId = parseInt(actionValue, 10);
       channelId = (body as any).channel?.id || (body as any).container?.channel_id;
@@ -464,12 +474,17 @@ export function registerHandlers(app: App): void {
     let marketId: number;
     let channelId: string;
 
-    // Parse the value - could be JSON or just a number
+    // Parse the value - could be JSON object or just a number
     const actionValue = (action as any).value;
     try {
       const parsed = JSON.parse(actionValue);
-      marketId = parsed.market_id;
-      channelId = parsed.channel_id;
+      if (typeof parsed === 'object' && parsed !== null) {
+        marketId = parsed.market_id;
+        channelId = parsed.channel_id;
+      } else {
+        marketId = parsed;
+        channelId = (body as any).channel?.id || (body as any).container?.channel_id;
+      }
     } catch {
       marketId = parseInt(actionValue, 10);
       channelId = (body as any).channel?.id || (body as any).container?.channel_id;
@@ -606,12 +621,17 @@ export function registerHandlers(app: App): void {
     let marketId: number;
     let channelId: string;
 
-    // Parse the value - could be JSON or just a number
+    // Parse the value - could be JSON object or just a number
     const actionValue = (action as any).value;
     try {
       const parsed = JSON.parse(actionValue);
-      marketId = parsed.market_id;
-      channelId = parsed.channel_id;
+      if (typeof parsed === 'object' && parsed !== null) {
+        marketId = parsed.market_id;
+        channelId = parsed.channel_id;
+      } else {
+        marketId = parsed;
+        channelId = (body as any).channel?.id || (body as any).container?.channel_id;
+      }
     } catch {
       marketId = parseInt(actionValue, 10);
       channelId = (body as any).channel?.id || (body as any).container?.channel_id;
