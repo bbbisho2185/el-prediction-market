@@ -116,6 +116,39 @@ export function placeBet(
   }
 }
 
+export function cancelBet(
+  betId: number,
+  requesterId: string
+): { success: boolean; refundAmount?: number; error?: string } {
+  // Get the bet
+  const bet = db.getBet(betId);
+  if (!bet) {
+    return { success: false, error: 'Bet not found' };
+  }
+
+  // Check ownership
+  if (bet.user_id !== requesterId) {
+    return { success: false, error: 'You can only cancel your own bets' };
+  }
+
+  // Check if market is still open
+  const market = db.getMarket(bet.market_id);
+  if (!market) {
+    return { success: false, error: 'Market not found' };
+  }
+
+  if (market.status !== 'open') {
+    return { success: false, error: 'Cannot cancel bet - market is no longer open' };
+  }
+
+  try {
+    db.cancelBet(betId);
+    return { success: true, refundAmount: bet.amount };
+  } catch (error) {
+    return { success: false, error: 'Failed to cancel bet' };
+  }
+}
+
 export function resolveMarket(
   marketId: number,
   winningOptionIndex: number,

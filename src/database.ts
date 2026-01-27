@@ -302,6 +302,24 @@ export function getUserActiveBets(userId: string): Array<Bet & { question: strin
   `, [userId]);
 }
 
+export function getBet(betId: number): Bet | undefined {
+  return queryOne<Bet>('SELECT * FROM bets WHERE id = ?', [betId]);
+}
+
+export function cancelBet(betId: number): void {
+  const bet = getBet(betId);
+  if (!bet) throw new Error('Bet not found');
+
+  // Refund the user
+  const user = queryOne<{ balance: number }>('SELECT balance FROM users WHERE id = ?', [bet.user_id]);
+  if (user) {
+    runSql('UPDATE users SET balance = ? WHERE id = ?', [user.balance + bet.amount, bet.user_id]);
+  }
+
+  // Delete the bet
+  runSql('DELETE FROM bets WHERE id = ?', [betId]);
+}
+
 export function getDatabase(): SqlJsDatabase {
   return db;
 }

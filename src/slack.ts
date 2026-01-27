@@ -92,15 +92,43 @@ export function registerHandlers(app: App): void {
         return;
       }
 
-      const betLines = bets.map(b => {
+      const blocks: any[] = [
+        {
+          type: 'header',
+          text: { type: 'plain_text', text: '🎲 Your Active Bets', emoji: true }
+        },
+        { type: 'divider' }
+      ];
+
+      for (const b of bets) {
         const details = market.getMarketDetails(b.market_id);
         const optionName = details ? details.parsedOptions[b.option_index] : 'Unknown';
-        return `• Market #${b.market_id}: ${b.amount} coins on "${optionName}"`;
-      });
+
+        blocks.push({
+          type: 'section',
+          text: {
+            type: 'mrkdwn',
+            text: `*Market #${b.market_id}:* ${b.question}\n💰 ${b.amount} coins on "*${optionName}*"`
+          },
+          accessory: {
+            type: 'button',
+            text: { type: 'plain_text', text: '❌ Cancel Bet', emoji: true },
+            style: 'danger',
+            action_id: 'cancel_bet',
+            value: JSON.stringify({ bet_id: b.id, channel_id: command.channel_id }),
+            confirm: {
+              title: { type: 'plain_text', text: 'Cancel Bet?' },
+              text: { type: 'mrkdwn', text: `Are you sure you want to cancel your ${b.amount} coin bet on "${optionName}"? You will be refunded.` },
+              confirm: { type: 'plain_text', text: 'Yes, Cancel' },
+              deny: { type: 'plain_text', text: 'Keep Bet' }
+            }
+          }
+        });
+      }
 
       await respond({
         response_type: 'ephemeral',
-        text: `🎲 *Your Active Bets*\n\n${betLines.join('\n')}`
+        blocks: blocks
       });
       return;
     }
@@ -660,6 +688,41 @@ export function registerHandlers(app: App): void {
           }
         }
       ]
+    });
+  });
+
+  // Handle cancel bet
+  app.action('cancel_bet', async ({ ack, body, client, action }) => {
+    await ack();
+
+    let betId: number;
+    let channelId: string;
+
+    const actionValue = (action as any).value;
+    try {
+      const parsed = JSON.parse(actionValue);
+      betId = parsed.bet_id;
+      channelId = parsed.channel_id;
+    } catch {
+      betId = parseInt(actionValue, 10);
+      channelId = (body as any).channel?.id || (body as any).container?.channel_id;
+    }
+
+    const result = market.cancelBet(betId, body.user.id);
+
+    if (!result.success) {
+      await client.chat.postEphemeral({
+        channel: channelId,
+        user: body.user.id,
+        text: `❌ ${result.error}`
+      });
+      return;
+    }
+
+    await client.chat.postEphemeral({
+      channel: channelId,
+      user: body.user.id,
+      text: `✅ Bet cancelled! ${result.refundAmount} coins have been refunded to your balance.`
     });
   });
 }
