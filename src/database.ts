@@ -101,8 +101,11 @@ function runSql(sql: string, params: any[] = []): void {
 }
 
 function getLastInsertRowId(): number {
-  const result = queryOne<{ id: number }>('SELECT last_insert_rowid() as id');
-  return result?.id ?? 0;
+  const result = db.exec('SELECT last_insert_rowid() as id');
+  if (result.length > 0 && result[0].values.length > 0) {
+    return result[0].values[0][0] as number;
+  }
+  return 0;
 }
 
 // User operations
