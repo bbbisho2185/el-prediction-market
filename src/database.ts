@@ -302,6 +302,42 @@ export function getUserActiveBets(userId: string): Array<Bet & { question: strin
   `, [userId]);
 }
 
+export interface BetHistoryItem {
+  id: number;
+  market_id: number;
+  question: string;
+  option_index: number;
+  options: string;
+  amount: number;
+  payout: number | null;
+  market_status: string;
+  winning_option: number | null;
+  created_at: string;
+  resolved_at: string | null;
+}
+
+export function getUserBetHistory(userId: string, limit: number = 20): BetHistoryItem[] {
+  return queryAll<BetHistoryItem>(`
+    SELECT
+      b.id,
+      b.market_id,
+      m.question,
+      b.option_index,
+      m.options,
+      b.amount,
+      b.payout,
+      m.status as market_status,
+      m.winning_option,
+      b.created_at,
+      m.resolved_at
+    FROM bets b
+    JOIN markets m ON b.market_id = m.id
+    WHERE b.user_id = ?
+    ORDER BY b.created_at DESC
+    LIMIT ?
+  `, [userId, limit]);
+}
+
 export function getBet(betId: number): Bet | undefined {
   return queryOne<Bet>('SELECT * FROM bets WHERE id = ?', [betId]);
 }

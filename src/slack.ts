@@ -133,6 +133,91 @@ export function registerHandlers(app: App): void {
       return;
     }
 
+    if (args === 'history') {
+      const history = db.getUserBetHistory(command.user_id, 20);
+      if (history.length === 0) {
+        await respond({
+          response_type: 'ephemeral',
+          text: 'You have no betting history yet. Place some bets with `/predict markets`!'
+        });
+        return;
+      }
+
+      const blocks: any[] = [
+        {
+          type: 'header',
+          text: { type: 'plain_text', text: '📜 Your Betting History', emoji: true }
+        },
+        { type: 'divider' }
+      ];
+
+      let totalWagered = 0;
+      let totalWon = 0;
+      let wins = 0;
+      let losses = 0;
+
+      for (const bet of history) {
+        const options = JSON.parse(bet.options) as string[];
+        const optionName = options[bet.option_index] || 'Unknown';
+        totalWagered += bet.amount;
+
+        let statusText: string;
+        let emoji: string;
+
+        if (bet.market_status === 'resolved') {
+          const won = bet.winning_option === bet.option_index;
+          if (won) {
+            emoji = '✅';
+            statusText = `Won +${bet.payout} coins`;
+            totalWon += bet.payout || 0;
+            wins++;
+          } else {
+            emoji = '❌';
+            statusText = `Lost ${bet.amount} coins`;
+            losses++;
+          }
+        } else if (bet.market_status === 'closed') {
+          emoji = '🚫';
+          statusText = 'Market cancelled (refunded)';
+        } else {
+          emoji = '⏳';
+          statusText = 'Pending';
+        }
+
+        blocks.push({
+          type: 'section',
+          text: {
+            type: 'mrkdwn',
+            text: `${emoji} *Market #${bet.market_id}:* ${bet.question}\n` +
+              `   Bet ${bet.amount} coins on "*${optionName}*" → ${statusText}`
+          }
+        });
+      }
+
+      // Add summary
+      const netProfit = totalWon - totalWagered;
+      const profitEmoji = netProfit >= 0 ? '📈' : '📉';
+
+      blocks.push({ type: 'divider' });
+      blocks.push({
+        type: 'section',
+        text: {
+          type: 'mrkdwn',
+          text: `*Summary (last ${history.length} bets):*\n` +
+            `• Record: ${wins}W - ${losses}L\n` +
+            `• Total wagered: ${totalWagered} coins\n` +
+            `• Total won: ${totalWon} coins\n` +
+            `• ${profitEmoji} Net profit: ${netProfit >= 0 ? '+' : ''}${netProfit} coins`
+        }
+      });
+
+      await respond({
+        response_type: 'ephemeral',
+        blocks: blocks
+      });
+      return;
+    }
+
     if (args === 'create') {
       // Open modal for creating a market
       await client.views.open({
@@ -751,6 +836,7 @@ function getHelpBlocks(): any[] {
           '• `/predict <id>` - View a specific market\n' +
           '• `/predict balance` - Check your coin balance\n' +
           '• `/predict mybets` - View your active bets\n' +
+          '• `/predict history` - View your betting history & stats\n' +
           '• `/predict leaderboard` - See the top traders\n' +
           '• `/predict help` - Show this help message'
       }
