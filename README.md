@@ -11,6 +11,9 @@ A Slack bot that allows anyone to create prediction markets with fake money. Use
 - **Fair Payouts**: Winners share the losing pool proportionally to their bets
 - **Cancel Bets**: Change your mind? Cancel your bet while the market is still open
 - **Betting History**: Track your performance with detailed stats
+- **Expiration Dates**: Set optional expiration times on markets (1 hour to 1 month)
+- **Featured Markets**: Pin important markets so they're easy to find
+- **Search**: Find markets by keyword
 
 ## Commands
 
@@ -23,6 +26,8 @@ A Slack bot that allows anyone to create prediction markets with fake money. Use
 | `/predict balance` | Check your coin balance |
 | `/predict mybets` | View your active bets (with cancel option) |
 | `/predict history` | View your betting history & stats |
+| `/predict featured` | View featured markets in the channel |
+| `/predict search <keyword>` | Search markets by keyword |
 | `/predict leaderboard` | See the top traders |
 
 ## Setup
@@ -100,7 +105,8 @@ npm run dev
 
 1. Use `/predict create` to open the creation modal
 2. Enter your question and options (one per line)
-3. The market is announced in the channel
+3. Optionally set an expiration time (1 hour to 1 month)
+4. The market is announced in the channel
 
 ### Betting
 

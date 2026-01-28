@@ -32,7 +32,8 @@ export function createMarket(
   creatorUsername: string,
   question: string,
   options: string[],
-  channelId: string
+  channelId: string,
+  expiresAt?: string
 ): CreateMarketResult {
   // Ensure creator exists
   ensureUser(creatorId, creatorUsername);
@@ -57,7 +58,7 @@ export function createMarket(
   }
 
   try {
-    const market = db.createMarket(creatorId, question.trim(), options.map(o => o.trim()), channelId);
+    const market = db.createMarket(creatorId, question.trim(), options.map(o => o.trim()), channelId, expiresAt);
     if (!market) {
       return { success: false, error: 'Failed to create market in database' };
     }
@@ -264,6 +265,40 @@ export function formatMarketPercentages(market: db.MarketWithDetails): string[] 
     const percentage = ((total / market.totalPool) * 100).toFixed(1);
     return `${percentage}%`;
   });
+}
+
+export function checkExpiredMarkets(): db.Market[] {
+  return db.closeExpiredMarkets();
+}
+
+export function toggleFeatured(
+  marketId: number,
+  requesterId: string
+): { success: boolean; featured?: boolean; error?: string } {
+  const m = db.getMarket(marketId);
+  if (!m) {
+    return { success: false, error: 'Market not found' };
+  }
+
+  if (m.creator_id !== requesterId) {
+    return { success: false, error: 'Only the market creator can feature/unfeature this market' };
+  }
+
+  if (m.status !== 'open') {
+    return { success: false, error: 'Only open markets can be featured' };
+  }
+
+  const newFeatured = !m.featured;
+  db.setMarketFeatured(marketId, newFeatured);
+  return { success: true, featured: newFeatured };
+}
+
+export function getFeaturedMarkets(channelId?: string): db.Market[] {
+  return db.getFeaturedMarkets(channelId);
+}
+
+export function searchMarkets(keyword: string, channelId?: string): db.Market[] {
+  return db.searchMarkets(keyword, channelId);
 }
 
 export { STARTING_BALANCE, MIN_BET, MAX_BET };

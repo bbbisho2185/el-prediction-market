@@ -49,9 +49,15 @@ export async function initializeDatabase(): Promise<void> {
       created_at TEXT NOT NULL DEFAULT (datetime('now')),
       resolved_at TEXT,
       channel_id TEXT NOT NULL,
+      expires_at TEXT,
+      featured INTEGER NOT NULL DEFAULT 0,
       FOREIGN KEY (creator_id) REFERENCES users(id)
     )
   `);
+
+  // Add columns if they don't exist (for existing databases)
+  try { db.run('ALTER TABLE markets ADD COLUMN expires_at TEXT'); } catch (e) { /* column already exists */ }
+  try { db.run('ALTER TABLE markets ADD COLUMN featured INTEGER NOT NULL DEFAULT 0'); } catch (e) { /* column already exists */ }
 
   db.run(`
     CREATE TABLE IF NOT EXISTS bets (
@@ -155,6 +161,8 @@ export interface Market {
   created_at: string;
   resolved_at: string | null;
   channel_id: string;
+  expires_at: string | null;
+  featured: number;
 }
 
 export interface MarketWithDetails extends Market {
@@ -163,13 +171,20 @@ export interface MarketWithDetails extends Market {
   optionTotals: number[];
 }
 
-export function createMarket(creatorId: string, question: string, options: string[], channelId: string): Market {
-  console.log('Creating market:', { creatorId, question, options: options.length, channelId });
+export function createMarket(creatorId: string, question: string, options: string[], channelId: string, expiresAt?: string): Market {
+  console.log('Creating market:', { creatorId, question, options: options.length, channelId, expiresAt });
 
-  runSql(
-    'INSERT INTO markets (creator_id, question, options, channel_id) VALUES (?, ?, ?, ?)',
-    [creatorId, question, JSON.stringify(options), channelId]
-  );
+  if (expiresAt) {
+    runSql(
+      'INSERT INTO markets (creator_id, question, options, channel_id, expires_at) VALUES (?, ?, ?, ?, ?)',
+      [creatorId, question, JSON.stringify(options), channelId, expiresAt]
+    );
+  } else {
+    runSql(
+      'INSERT INTO markets (creator_id, question, options, channel_id) VALUES (?, ?, ?, ?)',
+      [creatorId, question, JSON.stringify(options), channelId]
+    );
+  }
 
   const lastId = getLastInsertRowId('markets');
   console.log('Last insert ID:', lastId);
@@ -354,6 +369,46 @@ export function cancelBet(betId: number): void {
 
   // Delete the bet
   runSql('DELETE FROM bets WHERE id = ?', [betId]);
+}
+
+export function closeExpiredMarkets(): Market[] {
+  const expired = queryAll<Market>(
+    "SELECT * FROM markets WHERE status = 'open' AND expires_at IS NOT NULL AND expires_at <= datetime('now')"
+  );
+  if (expired.length > 0) {
+    runSql("UPDATE markets SET status = 'closed' WHERE status = 'open' AND expires_at IS NOT NULL AND expires_at <= datetime('now')");
+  }
+  return expired;
+}
+
+export function setMarketFeatured(marketId: number, featured: boolean): void {
+  runSql('UPDATE markets SET featured = ? WHERE id = ?', [featured ? 1 : 0, marketId]);
+}
+
+export function getFeaturedMarkets(channelId?: string): Market[] {
+  if (channelId) {
+    return queryAll<Market>(
+      "SELECT * FROM markets WHERE featured = 1 AND status = 'open' AND channel_id = ? ORDER BY created_at DESC",
+      [channelId]
+    );
+  }
+  return queryAll<Market>(
+    "SELECT * FROM markets WHERE featured = 1 AND status = 'open' ORDER BY created_at DESC"
+  );
+}
+
+export function searchMarkets(keyword: string, channelId?: string): Market[] {
+  const pattern = `%${keyword}%`;
+  if (channelId) {
+    return queryAll<Market>(
+      'SELECT * FROM markets WHERE question LIKE ? AND channel_id = ? ORDER BY created_at DESC LIMIT 20',
+      [pattern, channelId]
+    );
+  }
+  return queryAll<Market>(
+    'SELECT * FROM markets WHERE question LIKE ? ORDER BY created_at DESC LIMIT 20',
+    [pattern]
+  );
 }
 
 export function getDatabase(): SqlJsDatabase {

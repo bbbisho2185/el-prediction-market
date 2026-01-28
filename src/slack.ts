@@ -39,6 +39,8 @@ export function registerHandlers(app: App): void {
     }
 
     if (args === 'markets' || args === 'list') {
+      // Check for expired markets first
+      market.checkExpiredMarkets();
       const markets = market.getOpenMarkets(command.channel_id);
       if (markets.length === 0) {
         await respond({
@@ -60,11 +62,13 @@ export function registerHandlers(app: App): void {
         const details = market.getMarketDetails(m.id);
         if (!details) continue;
 
+        const mExpiryText = m.expires_at ? `\n⏰ Expires: ${m.expires_at} UTC` : '';
+        const mFeaturedStar = m.featured ? '⭐ ' : '';
         blocks.push({
           type: 'section',
           text: {
             type: 'mrkdwn',
-            text: `*#${m.id}: ${m.question}*\nPool: ${details.totalPool} coins | Options: ${details.parsedOptions.length}`
+            text: `${mFeaturedStar}*#${m.id}: ${m.question}*\nPool: ${details.totalPool} coins | Options: ${details.parsedOptions.length}${mExpiryText}`
           },
           accessory: {
             type: 'button',
@@ -218,6 +222,113 @@ export function registerHandlers(app: App): void {
       return;
     }
 
+    if (args === 'featured') {
+      // Check for expired markets first
+      market.checkExpiredMarkets();
+
+      const featured = market.getFeaturedMarkets(command.channel_id);
+      if (featured.length === 0) {
+        await respond({
+          response_type: 'ephemeral',
+          text: 'No featured markets in this channel. Market creators can feature their markets from the market details view.'
+        });
+        return;
+      }
+
+      const blocks: any[] = [
+        {
+          type: 'header',
+          text: { type: 'plain_text', text: '⭐ Featured Markets', emoji: true }
+        },
+        { type: 'divider' }
+      ];
+
+      for (const m of featured.slice(0, 10)) {
+        const details = market.getMarketDetails(m.id);
+        if (!details) continue;
+
+        const expiryText = m.expires_at ? `\n⏰ Expires: ${m.expires_at} UTC` : '';
+        blocks.push({
+          type: 'section',
+          text: {
+            type: 'mrkdwn',
+            text: `⭐ *#${m.id}: ${m.question}*\nPool: ${details.totalPool} coins | Options: ${details.parsedOptions.length}${expiryText}`
+          },
+          accessory: {
+            type: 'button',
+            text: { type: 'plain_text', text: 'View & Bet', emoji: true },
+            action_id: 'view_market',
+            value: JSON.stringify({ market_id: m.id, channel_id: command.channel_id })
+          }
+        } as any);
+      }
+
+      await respond({
+        response_type: 'ephemeral',
+        blocks: blocks as any
+      });
+      return;
+    }
+
+    if (args.startsWith('search ')) {
+      const keyword = args.substring(7).trim();
+      if (!keyword) {
+        await respond({
+          response_type: 'ephemeral',
+          text: 'Please provide a search term. Usage: `/predict search <keyword>`'
+        });
+        return;
+      }
+
+      const results = market.searchMarkets(keyword, command.channel_id);
+      if (results.length === 0) {
+        await respond({
+          response_type: 'ephemeral',
+          text: `No markets found matching "${keyword}". Try a different search term.`
+        });
+        return;
+      }
+
+      const blocks: any[] = [
+        {
+          type: 'header',
+          text: { type: 'plain_text', text: `🔍 Search: "${keyword}"`, emoji: true }
+        },
+        {
+          type: 'context',
+          elements: [{ type: 'mrkdwn', text: `Found ${results.length} market${results.length !== 1 ? 's' : ''}` }]
+        },
+        { type: 'divider' }
+      ];
+
+      for (const m of results.slice(0, 10)) {
+        const details = market.getMarketDetails(m.id);
+        if (!details) continue;
+
+        const statusEmoji = m.status === 'open' ? '🟢' : m.status === 'resolved' ? '🏁' : '🔴';
+        const featuredStar = m.featured ? '⭐ ' : '';
+        blocks.push({
+          type: 'section',
+          text: {
+            type: 'mrkdwn',
+            text: `${featuredStar}${statusEmoji} *#${m.id}: ${m.question}*\nPool: ${details.totalPool} coins | Status: ${m.status}`
+          },
+          accessory: {
+            type: 'button',
+            text: { type: 'plain_text', text: 'View Details', emoji: true },
+            action_id: 'view_market',
+            value: JSON.stringify({ market_id: m.id, channel_id: command.channel_id })
+          }
+        } as any);
+      }
+
+      await respond({
+        response_type: 'ephemeral',
+        blocks: blocks as any
+      });
+      return;
+    }
+
     if (args === 'create') {
       // Open modal for creating a market
       await client.views.open({
@@ -250,6 +361,27 @@ export function registerHandlers(app: App): void {
                 action_id: 'options_input',
                 multiline: true,
                 placeholder: { type: 'plain_text', text: 'Yes\nNo' }
+              }
+            },
+            {
+              type: 'input',
+              block_id: 'expiration_block',
+              optional: true,
+              label: { type: 'plain_text', text: 'Expires in (optional)' },
+              element: {
+                type: 'static_select',
+                action_id: 'expiration_select',
+                placeholder: { type: 'plain_text', text: 'No expiration' },
+                options: [
+                  { text: { type: 'plain_text', text: '1 hour' }, value: '1h' },
+                  { text: { type: 'plain_text', text: '6 hours' }, value: '6h' },
+                  { text: { type: 'plain_text', text: '12 hours' }, value: '12h' },
+                  { text: { type: 'plain_text', text: '1 day' }, value: '1d' },
+                  { text: { type: 'plain_text', text: '3 days' }, value: '3d' },
+                  { text: { type: 'plain_text', text: '1 week' }, value: '1w' },
+                  { text: { type: 'plain_text', text: '2 weeks' }, value: '2w' },
+                  { text: { type: 'plain_text', text: '1 month' }, value: '1m' }
+                ]
               }
             }
           ]
@@ -289,8 +421,30 @@ export function registerHandlers(app: App): void {
     const question = view.state.values.question_block.question_input.value || '';
     const optionsText = view.state.values.options_block.options_input.value || '';
     const options = optionsText.split('\n').map(o => o.trim()).filter(o => o.length > 0);
+    const expirationValue = view.state.values.expiration_block?.expiration_select?.selected_option?.value;
     const metadata = JSON.parse(view.private_metadata || '{}');
     const channelId = metadata.channel_id;
+
+    // Calculate expiration date
+    let expiresAt: string | undefined;
+    if (expirationValue) {
+      const now = new Date();
+      const durations: Record<string, number> = {
+        '1h': 60 * 60 * 1000,
+        '6h': 6 * 60 * 60 * 1000,
+        '12h': 12 * 60 * 60 * 1000,
+        '1d': 24 * 60 * 60 * 1000,
+        '3d': 3 * 24 * 60 * 60 * 1000,
+        '1w': 7 * 24 * 60 * 60 * 1000,
+        '2w': 14 * 24 * 60 * 60 * 1000,
+        '1m': 30 * 24 * 60 * 60 * 1000
+      };
+      const ms = durations[expirationValue];
+      if (ms) {
+        const expDate = new Date(now.getTime() + ms);
+        expiresAt = expDate.toISOString().replace('T', ' ').replace(/\.\d+Z$/, '');
+      }
+    }
 
     if (options.length < 2) {
       await ack({
@@ -317,7 +471,7 @@ export function registerHandlers(app: App): void {
     const userId = body.user.id;
     const username = body.user.name || body.user.id;
 
-    const result = market.createMarket(userId, username, question, options, channelId);
+    const result = market.createMarket(userId, username, question, options, channelId, expiresAt);
 
     if (!result.success || !result.market) {
       await client.chat.postEphemeral({
@@ -344,7 +498,7 @@ export function registerHandlers(app: App): void {
           type: 'section',
           text: {
             type: 'mrkdwn',
-            text: `*#${result.market.id}: ${question}*\n\nCreated by <@${userId}>`
+            text: `*#${result.market.id}: ${question}*\n\nCreated by <@${userId}>${expiresAt ? `\n⏰ Expires: ${expiresAt} UTC` : ''}`
           }
         },
         {
@@ -810,6 +964,47 @@ export function registerHandlers(app: App): void {
       text: `✅ Bet cancelled! ${result.refundAmount} coins have been refunded to your balance.`
     });
   });
+  // Handle toggle featured
+  app.action('toggle_featured', async ({ ack, body, client, action }) => {
+    await ack();
+
+    let marketId: number;
+    let channelId: string;
+
+    const actionValue = (action as any).value;
+    try {
+      const parsed = JSON.parse(actionValue);
+      if (typeof parsed === 'object' && parsed !== null) {
+        marketId = parsed.market_id;
+        channelId = parsed.channel_id;
+      } else {
+        marketId = parsed;
+        channelId = (body as any).channel?.id || (body as any).container?.channel_id;
+      }
+    } catch {
+      marketId = parseInt(actionValue, 10);
+      channelId = (body as any).channel?.id || (body as any).container?.channel_id;
+    }
+
+    const result = market.toggleFeatured(marketId, body.user.id);
+
+    if (!result.success) {
+      await client.chat.postEphemeral({
+        channel: channelId,
+        user: body.user.id,
+        text: `❌ ${result.error}`
+      });
+      return;
+    }
+
+    await client.chat.postEphemeral({
+      channel: channelId,
+      user: body.user.id,
+      text: result.featured
+        ? `⭐ Market #${marketId} is now featured! Others can find it with \`/predict featured\`.`
+        : `Market #${marketId} has been unfeatured.`
+    });
+  });
 }
 
 function getHelpBlocks(): any[] {
@@ -833,6 +1028,8 @@ function getHelpBlocks(): any[] {
         text: '*Commands:*\n' +
           '• `/predict create` - Create a new prediction market\n' +
           '• `/predict markets` - List open markets in this channel\n' +
+          '• `/predict featured` - View featured markets\n' +
+          '• `/predict search <keyword>` - Search markets by keyword\n' +
           '• `/predict <id>` - View a specific market\n' +
           '• `/predict balance` - Check your coin balance\n' +
           '• `/predict mybets` - View your active bets\n' +
@@ -865,6 +1062,8 @@ function getMarketDetailBlocks(details: db.MarketWithDetails, userId: string, ch
 
   const statusText = details.status === 'open' ? '🟢 Open' :
     details.status === 'resolved' ? '🏁 Resolved' : '🔴 Closed';
+  const featuredText = details.featured ? ' ⭐ Featured' : '';
+  const expiryText = details.expires_at ? `\n⏰ Expires: ${details.expires_at} UTC` : '';
 
   const blocks: any[] = [
     {
@@ -875,7 +1074,7 @@ function getMarketDetailBlocks(details: db.MarketWithDetails, userId: string, ch
       type: 'section',
       text: {
         type: 'mrkdwn',
-        text: `*${details.question}*\n\n${statusText} | Total Pool: ${details.totalPool} coins`
+        text: `*${details.question}*\n\n${statusText}${featuredText} | Total Pool: ${details.totalPool} coins${expiryText}`
       }
     },
     { type: 'divider' },
@@ -908,6 +1107,12 @@ function getMarketDetailBlocks(details: db.MarketWithDetails, userId: string, ch
         type: 'button',
         text: { type: 'plain_text', text: '✅ Resolve', emoji: true },
         action_id: 'open_resolve_modal',
+        value: buttonValue
+      });
+      actions.push({
+        type: 'button',
+        text: { type: 'plain_text', text: details.featured ? '⭐ Unfeature' : '⭐ Feature', emoji: true },
+        action_id: 'toggle_featured',
         value: buttonValue
       });
       actions.push({
