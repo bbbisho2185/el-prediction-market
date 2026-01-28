@@ -9,6 +9,8 @@ A Slack bot that allows anyone to create prediction markets with fake money. Use
 - **Dynamic Odds**: See real-time odds based on the betting pool
 - **Leaderboard**: Compete for the top spot
 - **Fair Payouts**: Winners share the losing pool proportionally to their bets
+- **Cancel Bets**: Change your mind? Cancel your bet while the market is still open
+- **Betting History**: Track your performance with detailed stats
 
 ## Commands
 
@@ -19,7 +21,8 @@ A Slack bot that allows anyone to create prediction markets with fake money. Use
 | `/predict markets` | List open markets in the channel |
 | `/predict <id>` | View details of a specific market |
 | `/predict balance` | Check your coin balance |
-| `/predict mybets` | View your active bets |
+| `/predict mybets` | View your active bets (with cancel option) |
+| `/predict history` | View your betting history & stats |
 | `/predict leaderboard` | See the top traders |
 
 ## Setup
